@@ -8,8 +8,8 @@ mod services;
 use actix_cors::Cors;
 use actix_web::{http, web, App, HttpServer};
 use diesel::prelude::*;
-use std::env;
 use log::info;
+use std::env;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
