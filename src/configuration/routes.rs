@@ -1,4 +1,4 @@
-use crate::controllers::user_controller;
+use crate::controllers::{transaction_controller, user_controller};
 use actix_web::{get, web, HttpResponse};
 
 #[get("/ping")]
@@ -19,5 +19,13 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         .service(
             web::scope("/users")
                 .service(web::resource("/").route(web::get().to(user_controller::query_all))),
+        )
+        .service(
+            web::scope("/transfer")
+                .service(web::resource("/").route(web::get().to(transaction_controller::query_all)),
+                )
+                .service(
+                    web::resource("/create").route(web::post().to(transaction_controller::transfer)),
+                )
         );
 }

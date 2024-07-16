@@ -1,11 +1,12 @@
 use crate::models::user_token::UserToken;
 use crate::schema::users::dsl::users;
-use crate::schema::users::{email, id, session_token};
+use crate::schema::users::{balance, email, id, session_token};
 use anyhow::anyhow;
 use bcrypt::{hash, DEFAULT_COST, verify};
 use diesel::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::models::transaction_model::{Transaction, TransactionDTO, TransactionInfoDTO};
 
 #[derive(Queryable, Insertable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = crate::schema::users)]
@@ -88,8 +89,8 @@ impl User {
             session,
         })
     }
-    pub fn query_all(_page: i64, conn: &mut PgConnection) -> QueryResult<Vec<UserInfoDTO>> {
-        users.limit(100).select(UserInfoDTO::as_select()).load(conn)
+    pub fn query_all(page: i64, conn: &mut PgConnection) -> QueryResult<Vec<UserInfoDTO>> {
+        users.limit(10).offset(page * 10).select(UserInfoDTO::as_select()).load(conn)
     }
     pub fn find_user_by_email(email_id: &str, conn: &mut PgConnection) -> QueryResult<User> {
         users
@@ -111,6 +112,31 @@ impl User {
         }
         false
     }
+
+    // Transfer money from one user to another
+    pub fn try_transfer(from: &str, to: &str, amount: i32, conn: &mut PgConnection) -> anyhow::Result<TransactionDTO> {
+        conn.build_transaction()
+            .run(|conn| {
+                let from_user = Self::find_user_by_email(from, conn)?;
+                let to_user = Self::find_user_by_email(to, conn)?;
+                if from_user.balance < amount {
+                    return Err(anyhow!("transaction failed: insufficient balance"));
+                }
+                Self::set_balance(from_user.id, from_user.balance - amount, conn)?;
+                Self::set_balance(to_user.id, to_user.balance + amount, conn)?;
+                Ok(TransactionDTO {
+                    from_user: from_user.id,
+                    to_user: to_user.id,
+                    amount,
+                })
+            })
+    }
+    pub fn set_balance(who: i32, amount: i32, conn: &mut PgConnection) -> QueryResult<usize> {
+        diesel::update(users.filter(id.eq(who)))
+            .set(balance.eq(amount))
+            .execute(conn)
+    }
+
     pub fn generate_random_session() -> String {
         Uuid::new_v4().to_string()
     }
