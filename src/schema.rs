@@ -16,7 +16,11 @@ diesel::table! {
         balance -> Int4,
         removed -> Bool,
         password -> Varchar,
+        session_token -> Nullable<Varchar>,
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(transactions, users,);
+diesel::allow_tables_to_appear_in_same_query!(
+    transactions,
+    users,
+);
