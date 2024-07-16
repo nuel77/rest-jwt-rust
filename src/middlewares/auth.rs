@@ -22,7 +22,7 @@ pub struct JWTAuthentication;
 // `B` - type of response's body
 impl<S, B> Transform<S, ServiceRequest> for JWTAuthentication
 where
-    S: Service<ServiceRequest, Response=ServiceResponse<B>, Error=Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
 {
@@ -43,7 +43,7 @@ pub struct JWTAuthenticationMiddleware<S> {
 
 impl<S, B> Service<ServiceRequest> for JWTAuthenticationMiddleware<S>
 where
-    S: Service<ServiceRequest, Response=ServiceResponse<B>, Error=Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
 {
@@ -86,7 +86,7 @@ where
 
 impl<B, S> JWTAuthenticationMiddleware<S>
 where
-    S: Service<ServiceRequest, Response=ServiceResponse<B>, Error=Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
 {

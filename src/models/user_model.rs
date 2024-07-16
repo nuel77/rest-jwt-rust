@@ -1,4 +1,4 @@
-use crate::models::transaction_model::{TransactionDTO};
+use crate::models::transaction_model::TransactionDTO;
 use crate::models::user_token::UserToken;
 use crate::schema::users::dsl::users;
 use crate::schema::users::{balance, email, id, session_token};

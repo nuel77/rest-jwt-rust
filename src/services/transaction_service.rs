@@ -15,9 +15,9 @@ pub fn transfer(
         tx.amount,
         &mut db_pool.get().unwrap(),
     )
-        .map_err(|e| ServiceError::InternalServerError {
-            error_message: e.to_string(),
-        })?;
+    .map_err(|e| ServiceError::Unauthorized {
+        error_message: e.to_string(),
+    })?;
     //add the transaction to the database
     Transaction::add_transfer_history(&tx, &mut db_pool.get().unwrap()).map_err(|e| {
         ServiceError::InternalServerError {
