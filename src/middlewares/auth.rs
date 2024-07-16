@@ -2,14 +2,17 @@ use std::future::{ready, Ready};
 
 use crate::configuration::db::DatabasePool;
 use crate::controllers::types::ResponseBody;
+use crate::models::transaction_model::{TransactionDTO, TransactionInfoDTO};
+use crate::models::user_token::UserToken;
 use crate::utils::{get_secret_key, verify_token};
 use crate::{constants, utils};
 use actix_web::body::EitherBody;
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    web, Error, HttpResponse,
+    web, Error, HttpRequest, HttpResponse,
 };
 use futures::future::LocalBoxFuture;
+use jsonwebtoken::TokenData;
 
 // There are two steps in middleware processing.
 // 1. Middleware initialization, middleware factory gets called with
@@ -69,16 +72,28 @@ where
             is_authorized = true;
         }
 
+        // if user tries to log in with an existing valid token
+        if is_authorized && req.path().starts_with(constants::LOGIN_ROUTE) {
+            let err = self.err_response(req, constants::MESSAGE_ALREADY_LOGGED_IN);
+            return Box::pin(async { Ok(err) });
+        }
+
+        //transfer route, check if token user and payload user same
+        if is_authorized && req.path().starts_with(constants::TRANSFER_CREATE_ROUTE) {
+            let data = req.app_data::<web::Data<TransactionInfoDTO>>().unwrap();
+            //unwrap is fine as otherwise token validity check would've failed
+            let token = self.extract_token(&req).unwrap();
+            if !token.claims.email.eq(&data.from_user) {
+                let err = self.err_response(req, constants::MESSAGE_UNAUTHORIZED);
+                return Box::pin(async { Ok(err) });
+            }
+        }
+
         if !is_authorized {
-            let res = self.create_response(req, constants::MESSAGE_INVALID_TOKEN);
+            let res = self.err_response(req, constants::MESSAGE_INVALID_TOKEN);
             return Box::pin(async { Ok(res) });
         }
 
-        // if user tries to log in with an existing valid token
-        if is_authorized && req.path().starts_with(constants::LOGIN_ROUTE) {
-            let res = self.create_response(req, constants::MESSAGE_ALREADY_LOGGED_IN);
-            return Box::pin(async { Ok(res) });
-        }
         let fut = self.service.call(req);
         Box::pin(async move { fut.await.map(ServiceResponse::map_into_left_body) })
     }
@@ -94,29 +109,29 @@ where
         let Some(pool) = req.app_data::<web::Data<DatabasePool>>() else {
             return false;
         };
-        let Some(header) = req.headers().get(constants::AUTHORIZATION_HEADER) else {
+        let Some(token) = self.extract_token(req) else {
             return false;
         };
-        let Ok(auth) = header.to_str() else {
-            return false;
-        };
-
-        if !auth.to_uppercase().starts_with(constants::BEARER_PREFIX) {
-            return false;
-        }
-        let token = auth[constants::BEARER_PREFIX.len()..auth.len()].trim();
-
-        let Ok(token_data) = utils::decode_token(token.to_string(), &get_secret_key()) else {
-            return false;
-        };
-
-        if verify_token(&token_data, pool).is_err() {
+        if verify_token(&token, pool).is_err() {
             return false;
         }
         true
     }
 
-    pub fn create_response(
+    pub fn extract_token(&self, req: &ServiceRequest) -> Option<TokenData<UserToken>> {
+        let header = req.headers().get(constants::AUTHORIZATION_HEADER)?;
+        let auth = header.to_str().ok()?;
+
+        if !auth.to_uppercase().starts_with(constants::BEARER_PREFIX) {
+            return None;
+        };
+        let token = auth[constants::BEARER_PREFIX.len()..auth.len()].trim();
+
+        let token_data = utils::decode_token(token.to_string(), &get_secret_key()).ok()?;
+        Some(token_data)
+    }
+
+    pub fn err_response(
         &self,
         req: ServiceRequest,
         message: &str,

@@ -6,6 +6,7 @@ mod middlewares;
 mod models;
 mod schema;
 mod services;
+mod tests;
 mod utils;
 
 use crate::utils::get_secret_key;

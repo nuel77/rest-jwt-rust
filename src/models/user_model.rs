@@ -60,7 +60,7 @@ impl From<LoginDTO> for UserDTO {
 }
 impl User {
     pub fn register(who: LoginDTO, connection: &mut PgConnection) -> anyhow::Result<()> {
-        if Self::find_user_by_email(&who.email, connection).is_err() {
+        if Self::find_user_by_email(&who.email, connection).is_ok() {
             return Err(anyhow!("User already registered!"));
         }
         let mut user_dto: UserDTO = who.into();
