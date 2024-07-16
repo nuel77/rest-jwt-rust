@@ -1,8 +1,8 @@
 use crate::models::user_token::UserToken;
 use crate::schema::users::dsl::users;
-use crate::schema::users::{email, id};
+use crate::schema::users::{email, id, session_token};
 use anyhow::anyhow;
-use bcrypt::{hash, DEFAULT_COST};
+use bcrypt::{hash, DEFAULT_COST, verify};
 use diesel::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -15,6 +15,7 @@ pub struct User {
     pub email: String,
     pub password: String,
     pub balance: i32,
+    pub session_token: String,
 }
 
 #[derive(Insertable, Selectable, Serialize, Deserialize, Queryable)]
@@ -77,11 +78,11 @@ impl User {
         let Ok(user) = Self::find_user_by_email(&who.email, conn) else {
             return Err(anyhow!("unknown user"));
         };
-        if !user.password.eq(&hash(who.password, DEFAULT_COST)?) {
+        if !verify(&who.password, &user.password).unwrap() {
             return Err(anyhow!("password does not match"));
         }
         let session = User::generate_random_session();
-
+        User::set_session_token(user.id, &session, conn)?;
         Ok(LoginInfoDTO {
             email: user.email,
             session,
@@ -97,8 +98,18 @@ impl User {
             .first(conn)
     }
 
+    pub fn set_session_token(user_id: i32, session: &str, conn: &mut PgConnection) -> QueryResult<usize> {
+        diesel::update(users.filter(id.eq(user_id)))
+            .set(session_token.eq(session))
+            .execute(conn)
+    }
+
     pub fn is_valid_login_session(token: &UserToken, conn: &mut PgConnection) -> bool {
-        true
+        let user = Self::find_user_by_email(&token.email, conn);
+        if let Ok(user) = user {
+            return user.email.eq(&token.email) && user.session_token.eq(&token.login_session);
+        }
+        false
     }
     pub fn generate_random_session() -> String {
         Uuid::new_v4().to_string()

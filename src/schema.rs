@@ -16,7 +16,7 @@ diesel::table! {
         balance -> Int4,
         removed -> Bool,
         password -> Varchar,
-        session_token -> Nullable<Varchar>,
+        session_token -> Varchar,
     }
 }
 

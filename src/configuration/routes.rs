@@ -8,9 +8,13 @@ async fn ping() -> HttpResponse {
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(ping)
         .service(
-            web::scope("/auth").service(
-                web::resource("/register").route(web::get().to(user_controller::register)),
-            ),
+            web::scope("/auth")
+                .service(
+                    web::resource("/register").route(web::post().to(user_controller::register)),
+                )
+                .service(
+                    web::resource("/login").route(web::post().to(user_controller::login)),
+                ),
         )
         .service(
             web::scope("/users")

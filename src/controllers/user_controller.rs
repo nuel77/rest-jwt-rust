@@ -24,3 +24,10 @@ pub async fn query_all(pool: web::Data<DatabasePool>) -> Result<HttpResponse, Se
         Err(e) => Err(e),
     }
 }
+
+pub async fn login(user: web::Json<LoginDTO>, pool: web::Data<DatabasePool>) -> Result<HttpResponse, ServiceError> {
+    match user_service::login(user.0, &pool) {
+        Ok(token) => Ok(HttpResponse::Ok().json(ResponseBody::new(MESSAGE_OK, token))),
+        Err(e) => Err(e),
+    }
+}
