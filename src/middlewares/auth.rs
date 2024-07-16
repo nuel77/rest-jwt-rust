@@ -2,16 +2,14 @@ use std::future::{ready, Ready};
 
 use crate::configuration::db::DatabasePool;
 use crate::controllers::types::ResponseBody;
+use crate::utils::{get_secret_key, verify_token};
 use crate::{constants, utils};
 use actix_web::body::EitherBody;
-use actix_web::web::head;
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     web, Error, HttpResponse,
 };
 use futures::future::LocalBoxFuture;
-use log::error;
-use crate::utils::get_secret_key;
 
 // There are two steps in middleware processing.
 // 1. Middleware initialization, middleware factory gets called with
@@ -24,7 +22,7 @@ pub struct JWTAuthentication;
 // `B` - type of response's body
 impl<S, B> Transform<S, ServiceRequest> for JWTAuthentication
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response=ServiceResponse<B>, Error=Error>,
     S::Future: 'static,
     B: 'static,
 {
@@ -45,7 +43,7 @@ pub struct JWTAuthenticationMiddleware<S> {
 
 impl<S, B> Service<ServiceRequest> for JWTAuthenticationMiddleware<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response=ServiceResponse<B>, Error=Error>,
     S::Future: 'static,
     B: 'static,
 {
@@ -66,38 +64,68 @@ where
             }
         }
 
-        if !is_authorized {
-            if let Some(pool) = req.app_data::<web::Data<DatabasePool>>() {
-                if let Some(authen_header) = req.headers().get(constants::AUTHORIZATION_HEADER) {
-                    if let Ok(authen_str) = authen_header.to_str() {
-                        if authen_str.starts_with("bearer") || authen_str.starts_with("Bearer") {
-                            let token = authen_str[6..authen_str.len()].trim();
-                            if let Ok(token_data) = utils::decode_token(token.to_string(), &get_secret_key()) {
-                                if utils::verify_token(&token_data, pool).is_ok() {
-                                    is_authorized = true;
-                                } else {
-                                    error!("Invalid token");
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        // check if token is valid
+        if !is_authorized && self.check_if_token_valid(&req) {
+            is_authorized = true;
         }
 
         if !is_authorized {
-            let (request, _pl) = req.into_parts();
-            let response = HttpResponse::Unauthorized()
-                .json(ResponseBody::new(
-                    constants::MESSAGE_INVALID_TOKEN,
-                    constants::MESSAGE_EMPTY,
-                ))
-                .map_into_right_body();
-
-            return Box::pin(async { Ok(ServiceResponse::new(request, response)) });
+            let res = self.create_response(req, constants::MESSAGE_INVALID_TOKEN);
+            return Box::pin(async { Ok(res) });
         }
 
+        // if user tries to log in with an existing valid token
+        if is_authorized && req.path().starts_with(constants::LOGIN_ROUTE) {
+            let res = self.create_response(req, constants::MESSAGE_ALREADY_LOGGED_IN);
+            return Box::pin(async { Ok(res) });
+        }
         let fut = self.service.call(req);
         Box::pin(async move { fut.await.map(ServiceResponse::map_into_left_body) })
+    }
+}
+
+impl<B, S> JWTAuthenticationMiddleware<S>
+where
+    S: Service<ServiceRequest, Response=ServiceResponse<B>, Error=Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    pub fn check_if_token_valid(&self, req: &ServiceRequest) -> bool {
+        let Some(pool) = req.app_data::<web::Data<DatabasePool>>() else {
+            return false;
+        };
+        let Some(header) = req.headers().get(constants::AUTHORIZATION_HEADER) else {
+            return false;
+        };
+        let Ok(auth) = header.to_str() else {
+            return false;
+        };
+
+        if !auth.to_uppercase().starts_with(constants::BEARER_PREFIX) {
+            return false;
+        }
+        let token = auth[constants::BEARER_PREFIX.len()..auth.len()].trim();
+
+        let Ok(token_data) = utils::decode_token(token.to_string(), &get_secret_key()) else {
+            return false;
+        };
+
+        if verify_token(&token_data, pool).is_err() {
+            return false;
+        }
+        true
+    }
+
+    pub fn create_response(
+        &self,
+        req: ServiceRequest,
+        message: &str,
+    ) -> ServiceResponse<EitherBody<B>> {
+        let (request, _pl) = req.into_parts();
+        let response = HttpResponse::Unauthorized()
+            .json(ResponseBody::new(message, constants::MESSAGE_EMPTY))
+            .map_into_right_body();
+
+        ServiceResponse::new(request, response)
     }
 }

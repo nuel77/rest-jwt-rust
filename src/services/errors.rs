@@ -1,5 +1,4 @@
 use crate::controllers::types::ResponseBody;
-use actix_web::body::BoxBody;
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};

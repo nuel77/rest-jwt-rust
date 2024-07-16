@@ -1,12 +1,12 @@
+use crate::models::transaction_model::{TransactionDTO};
 use crate::models::user_token::UserToken;
 use crate::schema::users::dsl::users;
 use crate::schema::users::{balance, email, id, session_token};
 use anyhow::anyhow;
-use bcrypt::{hash, DEFAULT_COST, verify};
+use bcrypt::{hash, verify, DEFAULT_COST};
 use diesel::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::models::transaction_model::{Transaction, TransactionDTO, TransactionInfoDTO};
 
 #[derive(Queryable, Insertable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = crate::schema::users)]
@@ -60,7 +60,7 @@ impl From<LoginDTO> for UserDTO {
 }
 impl User {
     pub fn register(who: LoginDTO, connection: &mut PgConnection) -> anyhow::Result<()> {
-        if let Ok(_) = Self::find_user_by_email(&who.email, connection) {
+        if Self::find_user_by_email(&who.email, connection).is_err() {
             return Err(anyhow!("User already registered!"));
         }
         let mut user_dto: UserDTO = who.into();
@@ -75,7 +75,7 @@ impl User {
         Ok(())
     }
 
-    pub fn login(who: LoginDTO, conn: &mut PgConnection) -> anyhow::Result<LoginInfoDTO> {
+    pub fn login(who: &LoginDTO, conn: &mut PgConnection) -> anyhow::Result<LoginInfoDTO> {
         let Ok(user) = Self::find_user_by_email(&who.email, conn) else {
             return Err(anyhow!("unknown user"));
         };
@@ -90,7 +90,11 @@ impl User {
         })
     }
     pub fn query_all(page: i64, conn: &mut PgConnection) -> QueryResult<Vec<UserInfoDTO>> {
-        users.limit(10).offset(page * 10).select(UserInfoDTO::as_select()).load(conn)
+        users
+            .limit(10)
+            .offset(page * 10)
+            .select(UserInfoDTO::as_select())
+            .load(conn)
     }
     pub fn find_user_by_email(email_id: &str, conn: &mut PgConnection) -> QueryResult<User> {
         users
@@ -99,7 +103,11 @@ impl User {
             .first(conn)
     }
 
-    pub fn set_session_token(user_id: i32, session: &str, conn: &mut PgConnection) -> QueryResult<usize> {
+    pub fn set_session_token(
+        user_id: i32,
+        session: &str,
+        conn: &mut PgConnection,
+    ) -> QueryResult<usize> {
         diesel::update(users.filter(id.eq(user_id)))
             .set(session_token.eq(session))
             .execute(conn)
@@ -108,28 +116,34 @@ impl User {
     pub fn is_valid_login_session(token: &UserToken, conn: &mut PgConnection) -> bool {
         let user = Self::find_user_by_email(&token.email, conn);
         if let Ok(user) = user {
-            return user.email.eq(&token.email) && user.session_token.eq(&token.login_session);
+            return user.email.eq(&token.email)
+                && user.session_token.eq(&token.login_session)
+                && token.exp > chrono::Utc::now().timestamp();
         }
         false
     }
 
     // Transfer money from one user to another
-    pub fn try_transfer(from: &str, to: &str, amount: i32, conn: &mut PgConnection) -> anyhow::Result<TransactionDTO> {
-        conn.build_transaction()
-            .run(|conn| {
-                let from_user = Self::find_user_by_email(from, conn)?;
-                let to_user = Self::find_user_by_email(to, conn)?;
-                if from_user.balance < amount {
-                    return Err(anyhow!("transaction failed: insufficient balance"));
-                }
-                Self::set_balance(from_user.id, from_user.balance - amount, conn)?;
-                Self::set_balance(to_user.id, to_user.balance + amount, conn)?;
-                Ok(TransactionDTO {
-                    from_user: from_user.id,
-                    to_user: to_user.id,
-                    amount,
-                })
+    pub fn try_transfer(
+        from: &str,
+        to: &str,
+        amount: i32,
+        conn: &mut PgConnection,
+    ) -> anyhow::Result<TransactionDTO> {
+        conn.build_transaction().run(|conn| {
+            let from_user = Self::find_user_by_email(from, conn)?;
+            let to_user = Self::find_user_by_email(to, conn)?;
+            if from_user.balance < amount {
+                return Err(anyhow!("transaction failed: insufficient balance"));
+            }
+            Self::set_balance(from_user.id, from_user.balance - amount, conn)?;
+            Self::set_balance(to_user.id, to_user.balance + amount, conn)?;
+            Ok(TransactionDTO {
+                from_user: from_user.id,
+                to_user: to_user.id,
+                amount,
             })
+        })
     }
     pub fn set_balance(who: i32, amount: i32, conn: &mut PgConnection) -> QueryResult<usize> {
         diesel::update(users.filter(id.eq(who)))

@@ -7,17 +7,11 @@ mod schema;
 mod services;
 mod utils;
 
-use crate::configuration::types::UserClaim;
+use crate::utils::get_secret_key;
 use actix_cors::Cors;
-use actix_jwt_auth_middleware::use_jwt::UseJWTOnApp;
-use actix_jwt_auth_middleware::{Authority, TokenSigner};
 use actix_web::{http, web, App, HttpServer};
-use diesel::prelude::*;
-use ed25519_compact::KeyPair;
-use jwt_compact::alg::Ed25519;
 use log::info;
 use std::env;
-use crate::utils::get_secret_key;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
@@ -33,22 +27,9 @@ async fn main() -> std::io::Result<()> {
     let pool = configuration::db::create_db_pool(&db_host);
     configuration::db::run_migration(&mut pool.get().unwrap());
 
-    let KeyPair { pk, sk } = KeyPair::generate();
     info!("starting server on {}:{}", host, port);
 
     HttpServer::new(move || {
-        let authority = Authority::<UserClaim, Ed25519, _, _>::new()
-            .refresh_authorizer(|| async move { Ok(()) })
-            .token_signer(Some(
-                TokenSigner::new()
-                    .signing_key(sk.clone())
-                    .algorithm(Ed25519)
-                    .build()
-                    .expect(""),
-            ))
-            .verifying_key(pk)
-            .build()
-            .expect("cannot create jwt authority");
         App::new()
             .wrap(
                 Cors::default() // allowed_origin return access-control-allow-origin: * by default

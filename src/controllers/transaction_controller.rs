@@ -1,10 +1,10 @@
-use actix_web::{HttpResponse, web};
 use crate::configuration::db::DatabasePool;
 use crate::constants::{MESSAGE_EMPTY, MESSAGE_OK};
 use crate::controllers::types::ResponseBody;
 use crate::models::transaction_model::TransactionInfoDTO;
 use crate::services::errors::ServiceError;
 use crate::services::transaction_service;
+use actix_web::{web, HttpResponse};
 
 pub async fn transfer(
     tx: web::Json<TransactionInfoDTO>,

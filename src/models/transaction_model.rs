@@ -1,8 +1,10 @@
-use anyhow::anyhow;
-use diesel::{Insertable, PgConnection, Queryable, QueryDsl, QueryResult, RunQueryDsl, Selectable, SelectableHelper};
-use serde_derive::{Deserialize, Serialize};
-use crate::models::user_model::UserInfoDTO;
 use crate::schema::transactions;
+use anyhow::anyhow;
+use diesel::{
+    Insertable, PgConnection, QueryDsl, QueryResult, Queryable, RunQueryDsl, Selectable,
+    SelectableHelper,
+};
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Queryable, Insertable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = crate::schema::transactions)]
@@ -30,7 +32,10 @@ pub struct TransactionInfoDTO {
 }
 
 impl Transaction {
-    pub fn add_transfer_history(transaction: &TransactionDTO, conn: &mut PgConnection) -> anyhow::Result<()>{
+    pub fn add_transfer_history(
+        transaction: &TransactionDTO,
+        conn: &mut PgConnection,
+    ) -> anyhow::Result<()> {
         diesel::insert_into(transactions::table)
             .values(transaction)
             .execute(conn)
@@ -38,7 +43,7 @@ impl Transaction {
         Ok(())
     }
 
-    pub fn query_all(page: i64, conn: &mut PgConnection) -> QueryResult<Vec<Transaction>>{
+    pub fn query_all(page: i64, conn: &mut PgConnection) -> QueryResult<Vec<Transaction>> {
         transactions::table
             .limit(10)
             .offset(page * 10)

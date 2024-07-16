@@ -12,9 +12,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
                 .service(
                     web::resource("/register").route(web::post().to(user_controller::register)),
                 )
-                .service(
-                    web::resource("/login").route(web::post().to(user_controller::login)),
-                ),
+                .service(web::resource("/login").route(web::post().to(user_controller::login))),
         )
         .service(
             web::scope("/users")
@@ -22,10 +20,10 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         )
         .service(
             web::scope("/transfer")
-                .service(web::resource("/").route(web::get().to(transaction_controller::query_all)),
-                )
+                .service(web::resource("/").route(web::get().to(transaction_controller::query_all)))
                 .service(
-                    web::resource("/create").route(web::post().to(transaction_controller::transfer)),
-                )
+                    web::resource("/create")
+                        .route(web::post().to(transaction_controller::transfer)),
+                ),
         );
 }

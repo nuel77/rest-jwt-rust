@@ -1,26 +1,36 @@
-use actix_web::web;
 use crate::configuration::db::DatabasePool;
 use crate::models::transaction_model::{Transaction, TransactionInfoDTO};
 use crate::models::user_model::User;
 use crate::services::errors::ServiceError;
+use actix_web::web;
 
-pub fn transfer(tx: &TransactionInfoDTO, db_pool: &web::Data<DatabasePool>) -> Result<(), ServiceError> {
+pub fn transfer(
+    tx: &TransactionInfoDTO,
+    db_pool: &web::Data<DatabasePool>,
+) -> Result<(), ServiceError> {
     //transfer the amount
-    let tx = User::try_transfer(&tx.from_user, &tx.to_user, tx.amount, &mut db_pool.get().unwrap()).map_err(|e| {
-        ServiceError::InternalServerError {
+    let tx = User::try_transfer(
+        &tx.from_user,
+        &tx.to_user,
+        tx.amount,
+        &mut db_pool.get().unwrap(),
+    )
+        .map_err(|e| ServiceError::InternalServerError {
             error_message: e.to_string(),
-        }
-    })?;
+        })?;
     //add the transaction to the database
-    let tx = Transaction::add_transfer_history(&tx, &mut db_pool.get().unwrap()).map_err(|e| {
+    Transaction::add_transfer_history(&tx, &mut db_pool.get().unwrap()).map_err(|e| {
         ServiceError::InternalServerError {
             error_message: e.to_string(),
         }
     })?;
-    Ok(tx)
+    Ok(())
 }
 
-pub fn query_all(page: i64, db_pool: &web::Data<DatabasePool>) -> Result<Vec<Transaction>, ServiceError> {
+pub fn query_all(
+    page: i64,
+    db_pool: &web::Data<DatabasePool>,
+) -> Result<Vec<Transaction>, ServiceError> {
     Transaction::query_all(page, &mut db_pool.get().unwrap()).map_err(|e| {
         ServiceError::InternalServerError {
             error_message: e.to_string(),
