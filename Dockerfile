@@ -1,5 +1,5 @@
 #build from latst rust version
-FROM rust:latest
+FROM rust:1.79.0-slim-bullseye
 
 # install libpq, libsqlite and create new empty binary project
 RUN apt-get update; \
@@ -15,6 +15,9 @@ COPY ./src ./src
 COPY ./migrations ./migrations
 COPY ./diesel.toml .
 COPY ./.env .
+
+# Set the RUST_LOG environment variable
+ENV RUST_LOG=info
 
 # rebuild app with project source
 RUN cargo build --release

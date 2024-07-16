@@ -1,7 +1,7 @@
 use crate::configuration::db::DatabasePool;
 use crate::constants::{MESSAGE_EMPTY, MESSAGE_OK};
 use crate::controllers::types::ResponseBody;
-use crate::models::user_model::{LoginDTO, UserDTO};
+use crate::models::user_model::LoginDTO;
 use crate::services;
 use crate::services::errors::ServiceError;
 use crate::services::user_service;
