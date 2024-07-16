@@ -41,7 +41,6 @@ RUN apt-get update; \
 COPY --from=build /app/target/release/rest-jwt-rust .
 COPY --from=build /app/.env .
 COPY --from=build /app/diesel.toml .
-COPY ./wait-for-it.sh .
 
 # expose port
 EXPOSE 8080
