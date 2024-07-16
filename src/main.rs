@@ -1,3 +1,4 @@
+#![warn(unused_crate_dependencies)]
 mod configuration;
 mod constants;
 mod controllers;
