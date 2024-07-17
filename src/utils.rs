@@ -8,6 +8,7 @@ pub fn get_secret_key() -> Vec<u8> {
     let secret_key = std::env::var("SECRET_KEY").expect("key not found");
     secret_key.as_bytes().to_vec()
 }
+
 pub fn decode_token(
     token: String,
     key: &[u8],

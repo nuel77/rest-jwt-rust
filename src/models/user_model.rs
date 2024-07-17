@@ -1,3 +1,4 @@
+use crate::constants::email_regex;
 use crate::models::transaction_model::TransactionDTO;
 use crate::models::user_token::UserToken;
 use crate::schema::users::dsl::users;
@@ -60,6 +61,15 @@ impl From<LoginDTO> for UserDTO {
 }
 impl User {
     pub fn register(who: LoginDTO, connection: &mut PgConnection) -> anyhow::Result<()> {
+        //check if valid email
+        if !email_regex.is_match(&who.email) {
+            return Err(anyhow!("invalid email provided!"));
+        }
+        //check for empty password
+        if who.password.is_empty() {
+            return Err(anyhow!("password cannot be empty"));
+        }
+        //check if already exists
         if Self::find_user_by_email(&who.email, connection).is_ok() {
             return Err(anyhow!("User already registered!"));
         }
