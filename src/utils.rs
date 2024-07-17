@@ -3,6 +3,7 @@ use crate::models::user_model::User;
 use crate::models::user_token::UserToken;
 use actix_web::web;
 use jsonwebtoken::TokenData;
+use regex::Regex;
 
 pub fn get_secret_key() -> Vec<u8> {
     let secret_key = std::env::var("SECRET_KEY").expect("key not found");
@@ -29,4 +30,11 @@ pub fn verify_token(
     } else {
         Err("Invalid token".to_string())
     }
+}
+
+pub fn validate_email(email: &str) -> bool {
+    let email_regex: Regex = Regex::new(
+        r"^([a-z0-9_+]([a-z0-9_+.]*[a-z0-9_+])?)@([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6})",
+    ).unwrap();
+    email_regex.is_match(email)
 }

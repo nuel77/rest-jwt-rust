@@ -1,4 +1,3 @@
-use crate::constants::email_regex;
 use crate::models::transaction_model::TransactionDTO;
 use crate::models::user_token::UserToken;
 use crate::schema::users::dsl::users;
@@ -8,6 +7,7 @@ use bcrypt::{hash, verify, DEFAULT_COST};
 use diesel::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::utils::validate_email;
 
 #[derive(Queryable, Insertable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = crate::schema::users)]
@@ -62,7 +62,7 @@ impl From<LoginDTO> for UserDTO {
 impl User {
     pub fn register(who: LoginDTO, connection: &mut PgConnection) -> anyhow::Result<()> {
         //check if valid email
-        if !email_regex.is_match(&who.email) {
+        if !validate_email(&who.email) {
             return Err(anyhow!("invalid email provided!"));
         }
         //check for empty password

@@ -10,7 +10,3 @@ pub const UNPROTECTED_ROUTES: [&str; 3] = ["/ping", "/auth/register", LOGIN_ROUT
 pub const LOGIN_ROUTE: &str = "/auth/login";
 pub const TRANSFER_CREATE_ROUTE: &str = "/transfer/create";
 pub const MESSAGE_UNAUTHORIZED: &str = "Unauthorized to make this request";
-pub const email_regex: Regex = Regex::new(
-    r"^([a-z0-9_+]([a-z0-9_+.]*[a-z0-9_+])?)@([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6})",
-)
-.unwrap();

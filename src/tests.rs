@@ -106,7 +106,7 @@ mod tests {
             .send_request(&app)
             .await;
 
-        assert_eq!(to_bytes(resp.into_body()).await.unwrap(), "so");
-        //assert_eq!(resp.status(), 200);
+        //assert_eq!(to_bytes(resp.into_body()).await.unwrap(), "so");
+        assert_eq!(resp.status(), 200);
     }
 }
