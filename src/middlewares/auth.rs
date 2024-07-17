@@ -25,7 +25,7 @@ pub struct JWTAuthentication;
 // `B` - type of response's body
 impl<S, B> Transform<S, ServiceRequest> for JWTAuthentication
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response=ServiceResponse<B>, Error=Error>,
     S::Future: 'static,
     B: 'static,
 {
@@ -46,7 +46,7 @@ pub struct JWTAuthenticationMiddleware<S> {
 
 impl<S, B> Service<ServiceRequest> for JWTAuthenticationMiddleware<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response=ServiceResponse<B>, Error=Error>,
     S::Future: 'static,
     B: 'static,
 {
@@ -78,30 +78,19 @@ where
             return Box::pin(async { Ok(err) });
         }
 
-        //transfer route, check if token user and payload user same
-        if is_authorized && req.path().starts_with(constants::TRANSFER_CREATE_ROUTE) {
-            let data = req.app_data::<web::Data<TransactionInfoDTO>>().unwrap();
-            //unwrap is fine as otherwise token validity check would've failed
-            let token = self.extract_token(&req).unwrap();
-            if !token.claims.email.eq(&data.from_user) {
-                let err = self.err_response(req, constants::MESSAGE_UNAUTHORIZED);
-                return Box::pin(async { Ok(err) });
-            }
-        }
-
         if !is_authorized {
             let res = self.err_response(req, constants::MESSAGE_INVALID_TOKEN);
             return Box::pin(async { Ok(res) });
         }
 
         let fut = self.service.call(req);
-        Box::pin(async move { fut.await.map(ServiceResponse::map_into_left_body) })
+        Box::pin(async move { fut.await.map(ServiceResponse::map_into_left_body).into() })
     }
 }
 
 impl<B, S> JWTAuthenticationMiddleware<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response=ServiceResponse<B>, Error=Error>,
     S::Future: 'static,
     B: 'static,
 {

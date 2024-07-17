@@ -10,3 +10,4 @@ pub const UNPROTECTED_ROUTES: [&str; 3] = ["/ping", "/auth/register", LOGIN_ROUT
 pub const LOGIN_ROUTE: &str = "/auth/login";
 pub const TRANSFER_CREATE_ROUTE: &str = "/transfer/create";
 pub const MESSAGE_UNAUTHORIZED: &str = "Unauthorized to make this request";
+pub const MESSAGE_INVALID_PAYLOAD: &str = "Invalid payload";

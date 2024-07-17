@@ -52,7 +52,7 @@ mod tests {
                 .wrap(middlewares::auth::JWTAuthentication)
                 .configure(configuration::routes::configure_routes),
         )
-        .await;
+            .await;
 
         let login = json!({
             "email": "alicia@gmail.com",
@@ -93,9 +93,9 @@ mod tests {
 
         //try to transfer
         let transfer = json!({
-        "from_user": "alicia@gmail.com",
-        "to_user":"bobina@gmail.com",
-        "amount": 5
+            "from_user": "alicia@gmail.com",
+            "to_user":"bobina@gmail.com",
+            "amount": 5
         });
 
         let resp = actix_web::test::TestRequest::post()
@@ -106,7 +106,38 @@ mod tests {
             .send_request(&app)
             .await;
 
-        //assert_eq!(to_bytes(resp.into_body()).await.unwrap(), "so");
         assert_eq!(resp.status(), 200);
+
+        //check that reverse is not possible with alicia's token
+        let transfer = json!({
+            "to_user": "alicia@gmail.com",
+            "from_user":"bobina@gmail.com",
+            "amount": 5
+        });
+
+        let resp = actix_web::test::TestRequest::post()
+            .uri("/transfer/create")
+            .insert_header((http::header::AUTHORIZATION, format!("Bearer {:}", session)))
+            .insert_header(http::header::ContentType::json())
+            .set_payload(transfer.to_string())
+            .send_request(&app)
+            .await;
+        assert_ne!(resp.status(), 200);
+
+        //check that transfers above balance are not possible
+        //try to transfer
+        let transfer = json!({
+            "from_user": "alicia@gmail.com",
+            "to_user":"bobina@gmail.com",
+            "amount": 25
+        });
+        let resp = actix_web::test::TestRequest::post()
+            .uri("/transfer/create")
+            .insert_header((http::header::AUTHORIZATION, format!("Bearer {:}", session)))
+            .insert_header(http::header::ContentType::json())
+            .set_payload(transfer.to_string())
+            .send_request(&app)
+            .await;
+        assert_ne!(resp.status(), 200);
     }
 }
